@@ -1,0 +1,59 @@
+Largest found default PFP - 142.6 KiB
+Smallest found default PFP - 6.9 KiB
+
+Known Resolutions
+225x225
+750x750
+1500x1500
+2250x2250
+
+Odds of no-pfp having a banner are low
+
+known
+
+
+If user removed PFP, user record has no PFP option
+
+{
+  "$type": "app.bsky.actor.profile",
+  "createdAt": "2026-04-11T20:07:40.144Z"
+}
+
+
+fyt example
+
+{
+  "$type": "app.bsky.actor.profile",
+  "avatar": {
+    "$type": "blob",
+    "ref": {
+      "$link": "bafkreicjm7lwyzanplkpibl2ovbtbniabtjaylaizacuf6ynvc422hzw3i"
+    },
+    "mimeType": "image/jpeg",
+    "size": 905802
+  },
+  "banner": {
+    "$type": "blob",
+    "ref": {
+      "$link": "bafkreigrjo4nsgicaojek2skhza2zsb5xxf5nteakrktkumhgotlfn6mry"
+    },
+    "mimeType": "image/jpeg",
+    "size": 933309
+  },
+  "labels": {
+    "$type": "com.atproto.label.defs#selfLabels",
+    "values": [
+      {
+        "val": "!no-unauthenticated"
+      }
+    ]
+  },
+  "pronouns": "she/it",
+  "createdAt": "2024-11-24T22:51:01.056Z",
+  "pinnedPost": {
+    "cid": "bafyreiagojgjkj5uowaeh2hm4r7eniucje72teavvxfwoqs3rhbhvnm6hi",
+    "uri": "at://did:plc:2t622budf364qkodu3skkp5d/app.bsky.feed.post/3miezfsldik2d"
+  },
+  "description": "22 - stupid bitch - she/it",
+  "displayName": "emma (toys)"
+}

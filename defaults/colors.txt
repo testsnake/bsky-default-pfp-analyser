@@ -1,0 +1,6 @@
+orange - rgb(254, 131, 17)
+yellow - rgb(254, 216, 17)
+green - rgb(115, 223, 132)
+blue - rgb(17, 133, 254)
+pink - rgb(239, 117, 234)
+red - rgb(245, 84, 84)
