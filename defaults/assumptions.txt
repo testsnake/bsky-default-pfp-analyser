@@ -7,10 +7,6 @@ Known Resolutions
 1500x1500
 2250x2250
 
-Odds of no-pfp having a banner are low
-
-known
-
 
 If user removed PFP, user record has no PFP option
 

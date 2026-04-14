@@ -13,6 +13,33 @@ const ALLOWED_MIME_TYPES = [
     'image/jpeg',
     'image/png'
 ] // mime types seen of default pfps
+const ALLOWED_BACKGROUND_COLORS = [
+    '#f65354',
+    '#fe8311',
+    '#fed811',
+    '#1185fe',
+    '#73df84',
+    '#ef76ea',
+    '#202020', // only seen in 1 example
+] // background colors seen of default pfps
+const ALLOWED_ICON_COLORS = [
+    '#ffffff',
+] // icon colors seen of default pfps
+
+// pixels are relative to the 750x750 resolution version images, and are scaled accordingly
+const BACKGROUND_PIXEL_LOCATIONS = [
+    [
+        [10,10], // top left
+        [10, 375], // middle left
+        [10, 740], // bottom left
+        [375, 10], // top middle
+        [375, 740], // bottom middle
+        [740, 10], // top right
+        [740, 375], // middle right
+        [740, 740] // bottom right
+    ], // outside edges
+]
+
 
 interface userSearchParam {
     agent: AtpAgent,
@@ -41,16 +68,9 @@ async function checkUserHasNoAvatar(param: userSearchParam): Promise<boolean> {
 
     // avatar cannot be denoted from checks
     // download avatar for further checks
-    const avatarBlob = await param.agent.com.atproto.sync.getBlob({
-        did: param.did,
-        cid: user.avatar.ref.toString(),
-    });
-    
-    if (!avatarBlob.success) {
-        throw new Error(`Failed to download avatar blob for user ${param.did}`);
-    }
+    =
 
-    const avatarBuffer = Buffer.from(avatarBlob.data);
+    const avatarBuffer = await getAvatar(param, user);
 
     // check avatar resolution is not seen in default pfps
     const metadata = await sharp(avatarBuffer).metadata();
@@ -67,7 +87,22 @@ async function checkUserHasNoAvatar(param: userSearchParam): Promise<boolean> {
     
 }
 
-async function getAvatar()
+async function checkImageBackground(imageBuffer: Buffer): Promise<boolean> {
+}
+
+async function getAvatar(param: userSearchParam, record: AppBskyActorProfile.Record): Promise<Buffer> {
+    const avatarBlob = await param.agent.com.atproto.sync.getBlob({
+        did: param.did,
+        cid: record.avatar?.ref.toString() || '',
+    });
+    
+    if (!avatarBlob.success) {
+        throw new Error(`Failed to download avatar blob for user ${param.did}`);
+    }
+    
+    return Buffer.from(avatarBlob.data);
+}
+    
 
 async function getProfileRecord(param: userSearchParam): Promise<AppBskyActorProfile.Record> {
   const { data } = await param.agent.com.atproto.repo.getRecord({
