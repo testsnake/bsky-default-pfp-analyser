@@ -1,5 +1,6 @@
 import { AtpAgent, AtpSessionEvent, AtpSessionData, AppBskyActorDefs, AppBskyActorProfile} from "@atproto/api";
 import sharp from "sharp";
+import avatarModel from "./avatarModel";
 
 
 const MAX_AVATAR_SIZE = 163840 // KiB
@@ -13,18 +14,6 @@ const ALLOWED_MIME_TYPES = [
     'image/jpeg',
     'image/png'
 ] // mime types seen of default pfps
-const ALLOWED_BACKGROUND_COLORS = [
-    '#f65354',
-    '#fe8311',
-    '#fed811',
-    '#1185fe',
-    '#73df84',
-    '#ef76ea',
-    '#202020', // only seen in 1 example
-] // background colors seen of default pfps
-const ALLOWED_ICON_COLORS = [
-    '#ffffff',
-] // icon colors seen of default pfps
 
 // pixels are relative to the 750x750 resolution version images, and are scaled accordingly
 const BACKGROUND_PIXEL_LOCATIONS = [
@@ -53,23 +42,24 @@ async function checkUserHasNoAvatar(param: userSearchParam): Promise<boolean> {
 
     // user has no avatar set
     if (!user.avatar) {
-        return false;
+        console.log(`User ${param.did} has no avatar set`);
+        return true;
     }
 
     // avatar is larger than largest known default avatar
     if (user.avatar.size > MAX_AVATAR_SIZE) {
+        console.log(`User ${param.did} has avatar larger than max default avatar size`);
         return false;
     }
 
     // avatar has a mime type that is not seen in default pfps
     if (!ALLOWED_MIME_TYPES.includes(user.avatar.mimeType)) {
+        console.log(`User ${param.did} has avatar with mime type ${user.avatar.mimeType} which is not an allowed mime type`);
         return false;
     }
 
     // avatar cannot be denoted from checks
     // download avatar for further checks
-    =
-
     const avatarBuffer = await getAvatar(param, user);
 
     // check avatar resolution is not seen in default pfps
@@ -82,24 +72,44 @@ async function checkUserHasNoAvatar(param: userSearchParam): Promise<boolean> {
         return false;
     }
 
-
+    const avatarCheck = await avatarModel({
+        imageBuffer: avatarBuffer,
+        resolution: metadata.width,
+        iconColor: [255,255,255]
+    });
+    if (!avatarCheck) {
+        console.log(`User ${param.did} has avatar that failed the avatar model check`);
+        return false;
+    }
+    
+    console.log(`User ${param.did} has a default avatar`);
+    return true;
 
     
 }
 
-async function checkImageBackground(imageBuffer: Buffer): Promise<boolean> {
+async function getPdsFromDid(did: string): Promise<string> {
+    const didDoc = await fetch(`https://plc.directory/${did}`).then(r => r.json());
+    const pdsService = didDoc.service?.find((s: any) => s.id === '#atproto_pds');
+    if (!pdsService) throw new Error(`No PDS found for DID: ${did}`);
+    return pdsService.serviceEndpoint;
 }
 
 async function getAvatar(param: userSearchParam, record: AppBskyActorProfile.Record): Promise<Buffer> {
-    const avatarBlob = await param.agent.com.atproto.sync.getBlob({
+    console.log(`Downloading avatar for user ${param.did} from blob ref ${record.avatar?.ref.toString()}`);
+
+    const pdsUrl = await getPdsFromDid(param.did);
+    const pdsAgent = new AtpAgent({ service: pdsUrl });
+
+    const avatarBlob = await pdsAgent.com.atproto.sync.getBlob({
         did: param.did,
         cid: record.avatar?.ref.toString() || '',
     });
-    
+
     if (!avatarBlob.success) {
         throw new Error(`Failed to download avatar blob for user ${param.did}`);
     }
-    
+
     return Buffer.from(avatarBlob.data);
 }
     
@@ -113,3 +123,5 @@ async function getProfileRecord(param: userSearchParam): Promise<AppBskyActorPro
 
   return data.value as AppBskyActorProfile.Record
 }
+
+export default checkUserHasNoAvatar;

@@ -37,6 +37,16 @@ const BACKGROUND_POI = [
     [740, 740], // bottom right
 ];
 
+const ALLOWED_BACKGROUND_COLORS: [number, number, number][] = [
+    [246, 83, 84],   // #f65354
+    [254, 131, 17],  // #fe8311
+    [254, 216, 17],  // #fed811
+    [17, 133, 254],  // #1185fe
+    [115, 223, 132], // #73df84
+    [239, 118, 234], // #ef76ea
+    [32, 32, 32],    // #202020
+]
+
 interface avatarModelParam {
     imageBuffer: Buffer;
     resolution: number;
@@ -44,12 +54,17 @@ interface avatarModelParam {
 }
 
 async function avatarModel(param: avatarModelParam): Promise<boolean> {
-    const poi = await getPixelsOfInterest(param);
+    try {
+        const poi = await getPixelsOfInterest(param);
 
-    if (poi >= 4 && poi <= 18) {
-        return true;
+        if (poi >= 4 && poi <= 17) {
+            return true;
+        }
+        return false;
+    } catch (e) {
+        console.error("Error in avatarModel:", e);
+        return false;
     }
-    return false;
 }
 
 async function getPixelsOfInterest(param: avatarModelParam): Promise<number> {
@@ -60,14 +75,21 @@ async function getPixelsOfInterest(param: avatarModelParam): Promise<number> {
     const { data, info } = await sharp(param.imageBuffer).raw().toBuffer({ resolveWithObject: true });
 
     // background as pixel at 0,0
-    let backgroundColor = [data[0], data[1], data[2]] as [number, number, number];
+    const idx0 = 0 * info.channels; // explicit for clarity
+    let backgroundColor = [data[idx0], data[idx0 + 1], data[idx0 + 2]] as [number, number, number];
+    if (!isAllowedBackgroundColor(backgroundColor)) {
+        console.log(`Background color [${backgroundColor}] is not an allowed background color`);
+        return -1;
+    }
 
     for (let [x, y] of BACKGROUND_POI) {
         x = Math.round(x / factor);
         y = Math.round(y / factor);
 
-        const idx = (y * info.width + x) * 3;
+        const idx = (y * info.width + x) * info.channels;
         const pixelColor: [number, number, number] = [data[idx], data[idx + 1], data[idx + 2]];
+
+        // console.log(`Background check at (${x}, ${y}): pixel color = [${pixelColor}], background color = [${backgroundColor}]`);
 
         const bgDist =
             Math.abs(pixelColor[0] - backgroundColor[0]) +
@@ -86,7 +108,7 @@ async function getPixelsOfInterest(param: avatarModelParam): Promise<number> {
         x = Math.round(x / factor);
         y = Math.round(y / factor);
 
-        const idx = (y * info.width + x) * 3; // calculate index for RGB
+        const idx = (y * info.width + x) * info.channels;
         const pixelColor: [number, number, number] = [data[idx], data[idx + 1], data[idx + 2]];
 
         if (isIconPixel(pixelColor)) numPixels++;
@@ -96,12 +118,20 @@ async function getPixelsOfInterest(param: avatarModelParam): Promise<number> {
     return numPixels;
 }
 
+function isAllowedBackgroundColor(color: [number, number, number], tolerance: number = 15): boolean {
+    return ALLOWED_BACKGROUND_COLORS.some(allowed =>
+        Math.abs(color[0] - allowed[0]) <= tolerance &&
+        Math.abs(color[1] - allowed[1]) <= tolerance &&
+        Math.abs(color[2] - allowed[2]) <= tolerance
+    );
+}
+
 function buildColorClassifier(iconColor: [number, number, number], bgColor: [number, number, number]) {
     const dx = iconColor[0] - bgColor[0];
     const dy = iconColor[1] - bgColor[1];
     const dz = iconColor[2] - bgColor[2];
 
-    const ARTIFACT_BIAS = 30;
+    const ARTIFACT_BIAS = 5;
 
     const threshold =
         dx * (iconColor[0] + bgColor[0]) +
@@ -114,3 +144,5 @@ function buildColorClassifier(iconColor: [number, number, number], bgColor: [num
         return dot >= threshold;
     };
 }
+
+export default avatarModel;
