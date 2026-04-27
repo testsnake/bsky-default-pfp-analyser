@@ -10,7 +10,7 @@ import path from "path";
 const RELAY_URL = "https://bsky.network";
 
 /** How many repos to request per page (API max is 1 000). */
-const PAGE_SIZE = 1_000;
+const PAGE_SIZE = 100;
 
 /** Path where the cursor is persisted so a crashed scan can resume. */
 const CURSOR_FILE = process.env.CURSOR_FILE ?? path.join(process.cwd(), ".scan-cursor");
@@ -95,6 +95,8 @@ export class Scanner {
         }
 
         while (!this.stopped) {
+            // wait 10 seconds to avoid rate limiting too hard
+            await sleep(10_000);
             // Fetch one page of repos from the relay
             let repos: Array<{ did: string }>;
             let nextCursor: string | undefined;
