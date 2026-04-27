@@ -8,7 +8,7 @@
     "dev": "tsx src/main.ts",
     "dev:scan": "tsx src/main.ts --scan",
     "start": "node build/main.js",
-    "start:scan": "node build/scan.js --scan",
+    "start:scan": "node build/main.js --scan",
     "watch": "nodemon --exec npm run dev --watch src --ext ts",
     "test:user": "tsx src/singleUserTest.ts",
     "dev:clear": "tsx src/clearList.ts"
