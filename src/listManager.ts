@@ -124,7 +124,7 @@ export class ListManager {
 
     private async executeWithRetry<T>(operation: () => Promise<T>, did: string, context: string): Promise<T> {
         const MAX_RETRIES = 5;
-        const BASE_DELAY_MS = 10_000;
+        const BASE_DELAY_MS = 30_000;
 
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {

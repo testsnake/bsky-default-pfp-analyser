@@ -149,7 +149,7 @@ async function getAvatar(param: userSearchParam, record: AppBskyActorProfile.Rec
 
 async function getProfileRecord(param: userSearchParam): Promise<AppBskyActorProfile.Record> {
     const MAX_RETRIES = 5;
-    const BASE_DELAY_MS = 10_000;
+    const BASE_DELAY_MS = 30_000;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
