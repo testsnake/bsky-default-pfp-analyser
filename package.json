@@ -6,9 +6,12 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/main.ts",
+    "dev:scan": "tsx src/main.ts --scan",
     "start": "node build/main.js",
+    "start:scan": "node build/scan.js --scan",
     "watch": "nodemon --exec npm run dev --watch src --ext ts",
-    "test:user": "tsx src/singleUserTest.ts"
+    "test:user": "tsx src/singleUserTest.ts",
+    "dev:clear": "tsx src/clearList.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,12 +19,15 @@
   "packageManager": "pnpm@10.33.0",
   "dependencies": {
     "@atproto/api": "^0.18.18",
+    "better-sqlite3": "^12.9.0",
     "dotenv": "^17.2.3",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.4.0",
+    "@types/ws": "^8.18.1",
     "nodemon": "^3.1.10",
     "prettier": "^3.6.2",
     "tsx": "^4.20.5",

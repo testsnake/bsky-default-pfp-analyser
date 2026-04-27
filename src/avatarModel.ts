@@ -23,6 +23,9 @@ const PIXELS_OF_INTEREST = [
     [375, 465], // P 14
     [215, 375], // Q 15
     [535, 375], // R 16
+    [510, 230], // S 17
+    [240, 510], // T 18
+    [410, 220], // U 19
 ];
 
 const BACKGROUND_POI = [
@@ -38,14 +41,15 @@ const BACKGROUND_POI = [
 ];
 
 const ALLOWED_BACKGROUND_COLORS: [number, number, number][] = [
-    [246, 83, 84],   // #f65354
-    [254, 131, 17],  // #fe8311
-    [254, 216, 17],  // #fed811
-    [17, 133, 254],  // #1185fe
+    [246, 83, 84], // #f65354
+    [254, 131, 17], // #fe8311
+    [254, 216, 17], // #fed811
+    [17, 133, 254], // #1185fe
     [115, 223, 132], // #73df84
     [239, 118, 234], // #ef76ea
-    [32, 32, 32],    // #202020
-]
+    [32, 32, 32], // #202020 - (only seen once)
+    [171, 61, 0], // #ab3d00 - (only seen once)
+];
 
 interface avatarModelParam {
     imageBuffer: Buffer;
@@ -56,7 +60,7 @@ interface avatarModelParam {
 async function avatarModel(param: avatarModelParam): Promise<boolean> {
     try {
         const poi = await getPixelsOfInterest(param);
-
+        console.log(`Pixels of interest for ${param.resolution}px avatar: ${poi}`);
         if (poi >= 4 && poi <= 17) {
             return true;
         }
@@ -119,10 +123,11 @@ async function getPixelsOfInterest(param: avatarModelParam): Promise<number> {
 }
 
 function isAllowedBackgroundColor(color: [number, number, number], tolerance: number = 15): boolean {
-    return ALLOWED_BACKGROUND_COLORS.some(allowed =>
-        Math.abs(color[0] - allowed[0]) <= tolerance &&
-        Math.abs(color[1] - allowed[1]) <= tolerance &&
-        Math.abs(color[2] - allowed[2]) <= tolerance
+    return ALLOWED_BACKGROUND_COLORS.some(
+        (allowed) =>
+            Math.abs(color[0] - allowed[0]) <= tolerance &&
+            Math.abs(color[1] - allowed[1]) <= tolerance &&
+            Math.abs(color[2] - allowed[2]) <= tolerance,
     );
 }
 

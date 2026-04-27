@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { AtpAgent } from "@atproto/api";
-import checkUserHasNoAvatar from './checkUser';
+import { checkUserAvatar } from './checkUser';
 
 async function main() {
 
@@ -32,7 +32,7 @@ async function main() {
 
 
     const start = performance.now();
-    const hasNoAvatar = await checkUserHasNoAvatar({ agent, did });
+    const hasNoAvatar = await checkUserAvatar({ agent, did });
     const elapsed = (performance.now() - start).toFixed(2);
 
     console.log(`(took ${elapsed}ms)`);
