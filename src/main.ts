@@ -8,17 +8,16 @@ async function main(runScan: boolean): Promise<void> {
     const agent = await createAgent();
     const listManager = await createListManager();
 
+    
+    const reader = new JetstreamReader(agent, {
+        listManager: listManager ?? undefined,
+    });
+    reader.start();
     if (runScan) {
         const scanner = new Scanner(agent, {
             listManager: listManager ?? undefined,
         });
         await scanner.run();
-    } else {
-        // run jetstream reader
-        const reader = new JetstreamReader(agent, {
-            listManager: listManager ?? undefined,
-        });
-        reader.start();
     }
 }
 
