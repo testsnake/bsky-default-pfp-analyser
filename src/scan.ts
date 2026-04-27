@@ -207,7 +207,6 @@ export class Scanner {
         }
         return new Promise<void>((resolve) => {
             this.waiters.push(() => {
-                this.inFlight++;
                 resolve();
             });
         });
