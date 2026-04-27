@@ -148,19 +148,47 @@ async function getAvatar(param: userSearchParam, record: AppBskyActorProfile.Rec
 }
 
 async function getProfileRecord(param: userSearchParam): Promise<AppBskyActorProfile.Record> {
-    try {
-        const { data } = await param.agent.com.atproto.repo.getRecord({
-        repo: param.did,
-        collection: "app.bsky.actor.profile",
-        rkey: "self",
-    });
+    const MAX_RETRIES = 5;
+    const BASE_DELAY_MS = 10_000;
 
-    return data.value as AppBskyActorProfile.Record;
-    } catch (err) {
-        console.error(`Failed to fetch profile record for user ${param.did}`);
-        throw err;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            const { data } = await param.agent.com.atproto.repo.getRecord({
+                repo: param.did,
+                collection: "app.bsky.actor.profile",
+                rkey: "self",
+            });
+
+            return data.value as AppBskyActorProfile.Record;
+        } catch (err: any) {
+            // check if rate limited
+            if (err?.status === 429) {
+                if (attempt === MAX_RETRIES) {
+                    console.error(`[RateLimit] Exhausted retries for ${param.did}`);
+                    throw err;
+                }
+
+                const waitMs = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+
+                const resetHeader = err.headers?.["ratelimit-reset"];
+                const timeToWait = resetHeader
+                    ? Math.max(waitMs, parseInt(resetHeader) * 1000 - Date.now() + 1000)
+                    : waitMs;
+
+                console.warn(
+                    `[RateLimit] Hit 429 for ${param.did}. Waiting ${Math.round(timeToWait / 1000)}s before retry ${attempt}...`,
+                );
+
+                await new Promise((resolve) => setTimeout(resolve, timeToWait));
+                continue;
+            }
+
+            console.error(`Failed to fetch profile record for user ${param.did}`);
+            throw err;
+        }
     }
-    
+
+    throw new Error(`Unreachable code reached in getProfileRecord for ${param.did}`);
 }
 
 export { userSearchParam, CheckResult, checkUserAvatar, getAvatar, getProfileRecord };

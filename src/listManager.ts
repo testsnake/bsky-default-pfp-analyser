@@ -1,6 +1,5 @@
 import { AtpAgent } from "@atproto/api";
 import { CheckResult } from "./checkUser";
-import { create } from "domain";
 
 interface ListManagerResult {
     did: string;
@@ -34,16 +33,22 @@ export class ListManager {
             if (!this.agent.session?.did) {
                 throw new Error("Agent is not authenticated");
             }
-            const res = await this.agent.com.atproto.repo.createRecord({
-                repo: this.agent.session.did,
-                collection: "app.bsky.graph.listitem",
-                record: {
-                    $type: "app.bsky.graph.listitem",
-                    subject: did,
-                    list: this.listId,
-                    createdAt: new Date().toISOString(),
-                },
-            });
+            
+            const res = await this.executeWithRetry(
+                () => this.agent.com.atproto.repo.createRecord({
+                    repo: this.agent.session!.did, // Asserted non-null due to check above
+                    collection: "app.bsky.graph.listitem",
+                    record: {
+                        $type: "app.bsky.graph.listitem",
+                        subject: did,
+                        list: this.listId,
+                        createdAt: new Date().toISOString(),
+                    },
+                }),
+                did,
+                "addToList"
+            );
+
             const rkey = res.data.uri.split("/").pop();
             console.log(`[ListManager] Added ${did} to list`);
             return rkey;
@@ -52,8 +57,6 @@ export class ListManager {
         }
     }
 
-    // WHY THE FUCK IS THIS SO COMPLICATED
-    // may store rkey in future, but depends on how much load this adds
     private async removeFromList(did: string, rkey: string | undefined): Promise<void> {
         try {
             if (!this.agent.session?.did) {
@@ -61,11 +64,15 @@ export class ListManager {
             }
 
             if (rkey) {
-                await this.agent.com.atproto.repo.deleteRecord({
-                    repo: this.agent.session.did,
-                    collection: "app.bsky.graph.listitem",
-                    rkey: rkey,
-                });
+                await this.executeWithRetry(
+                    () => this.agent.com.atproto.repo.deleteRecord({
+                        repo: this.agent.session!.did,
+                        collection: "app.bsky.graph.listitem",
+                        rkey: rkey,
+                    }),
+                    did,
+                    "removeFromList (fast path)"
+                );
                 console.log(`[ListManager] Removed ${did} from list`);
                 return;
             }
@@ -74,11 +81,15 @@ export class ListManager {
             let targetRkey: string | undefined;
 
             do {
-                const response = await this.agent.app.bsky.graph.getList({
-                    list: this.listId,
-                    cursor: cursor,
-                    limit: 100,
-                });
+                const response = await this.executeWithRetry(
+                    () => this.agent.app.bsky.graph.getList({
+                        list: this.listId,
+                        cursor: cursor,
+                        limit: 100,
+                    }),
+                    did,
+                    "getList"
+                );
 
                 const foundItem = response.data.items.find((item) => item.subject.did === did);
 
@@ -95,15 +106,52 @@ export class ListManager {
                 return;
             }
 
-            await this.agent.com.atproto.repo.deleteRecord({
-                repo: this.agent.session.did,
-                collection: "app.bsky.graph.listitem",
-                rkey: targetRkey,
-            });
+            await this.executeWithRetry(
+                () => this.agent.com.atproto.repo.deleteRecord({
+                    repo: this.agent.session!.did,
+                    collection: "app.bsky.graph.listitem",
+                    rkey: targetRkey,
+                }),
+                did,
+                "removeFromList (slow path)"
+            );
 
             console.log(`[ListManager] Removed ${did} from list`);
         } catch (err) {
             console.error(`[ListManager] Failed to remove ${did} from list:`, err);
         }
+    }
+
+    private async executeWithRetry<T>(operation: () => Promise<T>, did: string, context: string): Promise<T> {
+        const MAX_RETRIES = 5;
+        const BASE_DELAY_MS = 10_000;
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                return await operation();
+            } catch (err: any) {
+                if (err?.status === 429) {
+                    if (attempt === MAX_RETRIES) {
+                        console.error(`[RateLimit] Exhausted retries for ${context} on ${did}`);
+                        throw err;
+                    }
+
+                    const waitMs = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+                    const resetHeader = err.headers?.['ratelimit-reset'];
+                    const timeToWait = resetHeader 
+                        ? Math.max(waitMs, (parseInt(resetHeader) * 1000) - Date.now() + 1000) 
+                        : waitMs;
+
+                    console.warn(`[RateLimit] Hit 429 in ${context} for ${did}. Waiting ${Math.round(timeToWait / 1000)}s before retry ${attempt}...`);
+                    
+                    await new Promise(resolve => setTimeout(resolve, timeToWait));
+                    continue;
+                }
+                
+                throw err;
+            }
+        }
+        
+        throw new Error("Unreachable");
     }
 }
