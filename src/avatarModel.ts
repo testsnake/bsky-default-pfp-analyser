@@ -55,12 +55,13 @@ interface avatarModelParam {
     imageBuffer: Buffer;
     resolution: number;
     iconColor: [number, number, number];
+    did?: string;
 }
 
 async function avatarModel(param: avatarModelParam): Promise<boolean> {
     try {
         const poi = await getPixelsOfInterest(param);
-        console.log(`Pixels of interest for ${param.resolution}px avatar: ${poi}`);
+        //console.log(`Pixels of interest for ${param.resolution}px avatar: ${poi}`);
         if (poi >= 4 && poi <= 17) {
             return true;
         }
@@ -82,7 +83,7 @@ async function getPixelsOfInterest(param: avatarModelParam): Promise<number> {
     const idx0 = 0 * info.channels; // explicit for clarity
     let backgroundColor = [data[idx0], data[idx0 + 1], data[idx0 + 2]] as [number, number, number];
     if (!isAllowedBackgroundColor(backgroundColor)) {
-        console.log(`Background color [${backgroundColor}] is not an allowed background color`);
+        //console.log(`[AvatarModel] ${param.did} - Background color [${backgroundColor}] is not an allowed background color`);
         return -1;
     }
 

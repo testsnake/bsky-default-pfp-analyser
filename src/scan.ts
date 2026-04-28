@@ -96,7 +96,7 @@ export class Scanner {
 
         while (!this.stopped) {
             // wait 10 seconds to avoid rate limiting too hard
-            console.log("[Scanner] waiting 10 seconds before fetching next page…");
+            //console.log("[Scanner] waiting 10 seconds before fetching next page…");
             await sleep(10_000);
             // Fetch one page of repos from the relay
             let repos: Array<{ did: string }>;

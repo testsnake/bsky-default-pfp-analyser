@@ -1,6 +1,8 @@
 import { AtpAgent } from "@atproto/api";
 import { CheckResult } from "./checkUser";
 
+const TEST_MODE = process.env.TEST_MODE === "true";
+
 interface ListManagerResult {
     did: string;
     defaultAvatarStatus: CheckResult;
@@ -18,6 +20,10 @@ export class ListManager {
     }
 
     async listEvent(param: ListManagerResult): Promise<void | string> {
+        if (TEST_MODE) {
+            console.log(`[ListManager] TEST MODE: would process event for ${param.did} with status ${param.defaultAvatarStatus}`);
+            return;
+        }
         const { did, defaultAvatarStatus, prevStatus } = param;
 
         // only add to list if user has default avatar, remove otherwise
@@ -50,7 +56,7 @@ export class ListManager {
             );
 
             const rkey = res.data.uri.split("/").pop();
-            console.log(`[ListManager] Added ${did} to list`);
+            //console.log(`[ListManager] Added ${did} to list`);
             return rkey;
         } catch (err) {
             console.error(`[ListManager] Failed to add ${did} to list:`, err);
@@ -73,7 +79,7 @@ export class ListManager {
                     did,
                     "removeFromList (fast path)"
                 );
-                console.log(`[ListManager] Removed ${did} from list`);
+                //console.log(`[ListManager] Removed ${did} from list`);
                 return;
             }
 
@@ -102,7 +108,7 @@ export class ListManager {
             } while (cursor);
 
             if (!targetRkey) {
-                console.log(`[ListManager] User ${did} is not in the list. Nothing to remove.`);
+                //console.log(`[ListManager] User ${did} is not in the list. Nothing to remove.`);
                 return;
             }
 
@@ -116,7 +122,7 @@ export class ListManager {
                 "removeFromList (slow path)"
             );
 
-            console.log(`[ListManager] Removed ${did} from list`);
+            //console.log(`[ListManager] Removed ${did} from list`);
         } catch (err) {
             console.error(`[ListManager] Failed to remove ${did} from list:`, err);
         }
@@ -124,7 +130,7 @@ export class ListManager {
 
     private async executeWithRetry<T>(operation: () => Promise<T>, did: string, context: string): Promise<T> {
         const MAX_RETRIES = 5;
-        const BASE_DELAY_MS = 30_000;
+        const BASE_DELAY_MS = 10_000;
 
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {

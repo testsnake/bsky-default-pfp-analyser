@@ -1,4 +1,4 @@
-import { AtpAgent } from "@atproto/api";
+import { AppBskyActorProfile, AtpAgent } from "@atproto/api";
 import { CheckResult, checkUserAvatar } from "./checkUser";
 import { AvatarDb, db as defaultDb } from "./db";
 import { ListManager } from "./listManager";
@@ -152,9 +152,19 @@ export class JetstreamReader {
     private process(event: JetstreamCommitEvent): void {
         this.inFlight++;
 
+        if (!event.commit.record || event.commit.record.$type !== "app.bsky.actor.profile") {
+            console.warn(`[JetstreamReader] unexpected record type ${event.commit.record?.$type} for ${event.did}, skipping`);
+            this.inFlight--;
+            this.drainQueue();
+            return;
+        }
+
+        const profileRecord = event.commit.record as AppBskyActorProfile.Record | undefined;
+
         const did = event.did;
-        const avatarBlob = event.commit.record?.avatar as AvatarBlobRecord | undefined;
+        const avatarBlob = profileRecord?.avatar as AvatarBlobRecord | undefined;
         const incomingSize: number | undefined = avatarBlob?.size;
+
 
         const existing = this.db.get(did);
 
@@ -162,24 +172,24 @@ export class JetstreamReader {
 
         if (existing) {
             if (existing.checkResult !== CheckResult.defaultAvatar) {
-                console.log(`[JetstreamReader] ${did} already marked non-default, skipping`);
+                //console.log(`[JetstreamReader] ${did} already marked non-default, skipping`);
                 this.inFlight--;
                 this.drainQueue();
                 return;
             }
 
             if (incomingSize !== undefined && incomingSize === existing.avatarSize) {
-                console.log(`[JetstreamReader] ${did} avatar unchanged (size=${incomingSize}), skipping`);
+                //console.log(`[JetstreamReader] ${did} avatar unchanged (size=${incomingSize}), skipping`);
                 this.inFlight--;
                 this.drainQueue();
                 return;
             }
 
             // avatar size changed, not via onboarding
-            console.log(
-                `[JetstreamReader] ${did} avatar size changed ` +
-                    `(was ${existing.avatarSize} → now ${incomingSize}), marking non-default`,
-            );
+            // console.log(
+            //     `[JetstreamReader] ${did} avatar size changed ` +
+            //         `(was ${existing.avatarSize} → now ${incomingSize}), marking non-default`,
+            // );
 
             work = (async () => {
                 const rkey = await this.listManager?.listEvent({
@@ -197,7 +207,7 @@ export class JetstreamReader {
             })();
         } else {
             work = (async () => {
-                const result = await checkUserAvatar({ agent: this.agent, did });
+                const result = await checkUserAvatar({ agent: this.agent, did, user: profileRecord });
 
                 const rkey = await this.listManager?.listEvent({
                     did,

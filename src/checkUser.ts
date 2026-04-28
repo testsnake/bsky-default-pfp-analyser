@@ -49,7 +49,7 @@ async function checkUserAvatar(param: userSearchParam): Promise<resultWithStats>
 
     // user has no avatar set
     if (!param.user.avatar) {
-        console.log(`User ${param.did} has no avatar set`);
+        //console.log(`User ${param.did} has no avatar set`);
         return {
             did: param.did,
             result: CheckResult.noAvatar,
@@ -59,7 +59,7 @@ async function checkUserAvatar(param: userSearchParam): Promise<resultWithStats>
 
     // avatar is larger than largest known default avatar
     if (param.user.avatar.size > MAX_AVATAR_SIZE) {
-        console.log(`User ${param.did} has avatar larger than max default avatar size`);
+        //console.log(`User ${param.did} has avatar larger than max default avatar size`);
         return {
             did: param.did,
             result: CheckResult.nonDefaultViaLogic,
@@ -69,9 +69,9 @@ async function checkUserAvatar(param: userSearchParam): Promise<resultWithStats>
 
     // avatar has a mime type that is not seen in default pfps
     if (!ALLOWED_MIME_TYPES.includes(param.user.avatar.mimeType)) {
-        console.log(
-            `User ${param.did} has avatar with mime type ${param.user.avatar.mimeType} which is not an allowed mime type`,
-        );
+        //console.log(
+        //    `User ${param.did} has avatar with mime type ${param.user.avatar.mimeType} which is not an allowed mime type`,
+        //);
         return {
             did: param.did,
             result: CheckResult.nonDefaultViaLogic,
@@ -102,9 +102,10 @@ async function checkUserAvatar(param: userSearchParam): Promise<resultWithStats>
         imageBuffer: avatarBuffer,
         resolution: metadata.width,
         iconColor: [255, 255, 255],
+        did: param.did,
     });
     if (!avatarCheck) {
-        console.log(`User ${param.did} has avatar that failed the avatar model check`);
+        //console.log(`User ${param.did} has avatar that failed the avatar model check`);
         if (SAVE_AVATARS) await saveAvatar(param.did, avatarBuffer, false);
         return {
             did: param.did,
@@ -113,7 +114,7 @@ async function checkUserAvatar(param: userSearchParam): Promise<resultWithStats>
         };
     }
 
-    console.log(`User ${param.did} has a default avatar`);
+    //console.log(`User ${param.did} has a default avatar`);
     if (SAVE_AVATARS) await saveAvatar(param.did, avatarBuffer, true);
     return {
         did: param.did,
@@ -130,14 +131,18 @@ async function getPdsFromDid(did: string): Promise<string> {
 }
 
 async function getAvatar(param: userSearchParam, record: AppBskyActorProfile.Record): Promise<Buffer> {
-    console.log(`Downloading avatar for user ${param.did} from blob ref ${record.avatar?.ref.toString()}`);
+    
 
     const pdsUrl = await getPdsFromDid(param.did);
     const pdsAgent = new AtpAgent({ service: pdsUrl });
 
+    const itemcid = record.avatar?.ref.$link?.toString() ?? record.avatar?.ref.toString() ?? "";
+
+    //console.log(`Downloading avatar for user ${param.did} from blob ref ${itemcid} at PDS ${pdsUrl}`);
+
     const avatarBlob = await pdsAgent.com.atproto.sync.getBlob({
         did: param.did,
-        cid: record.avatar?.ref.toString() || "",
+        cid: itemcid,
     });
 
     if (!avatarBlob.success) {
@@ -180,6 +185,19 @@ async function getProfileRecord(param: userSearchParam): Promise<AppBskyActorPro
                 );
 
                 await new Promise((resolve) => setTimeout(resolve, timeToWait));
+                continue;
+            } else if (err?.status === 400) {
+                // caused by account not haveing app.bsky.actor.profile record, treat as no avatar
+                return {} as AppBskyActorProfile.Record;
+            } else if (err?.status === 1) {
+                // network error, retry after delay
+                if (attempt === MAX_RETRIES) {
+                    console.error(`[NetworkError] Exhausted retries for ${param.did}`);
+                    throw err;
+                }
+
+                console.warn(`[NetworkError] Failed to fetch profile for ${param.did}. Retrying in ${BASE_DELAY_MS / 1000}s...`);
+                await new Promise((resolve) => setTimeout(resolve, BASE_DELAY_MS));
                 continue;
             }
 
